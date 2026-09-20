@@ -1,4 +1,4 @@
-# Surf Check — TronByt prototype
+# SharkByte Surf - Live — TronByt prototype
 
 A 64×32 live surf display prototype for **Blackies, Newport Beach, CA**.
 
