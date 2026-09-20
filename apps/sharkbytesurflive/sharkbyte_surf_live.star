@@ -126,6 +126,10 @@ def clamp(value, low, high):
 def rounded_int(value):
     return int(float(value) + 0.5)
 
+def one_decimal(value):
+    tenths = int(float(value) * 10.0 + 0.5)
+    return "%d.%d" % (tenths // 10, tenths % 10)
+
 def direction_name(degrees):
     d = int(float(degrees)) % 360
     if d < 22.5 or d >= 337.5:
@@ -418,7 +422,7 @@ def page_one(state, phase):
         outlined_text_at(10, 7, "%d°" % rounded_int(state["air_temp"]), air_color),
         drop_icon(37, 9, water_color),
         outlined_text_at(46, 7, "%d°" % rounded_int(state["water_temp"]), water_color),
-        outlined_text_at(21, 17, "%.1f'" % state["wave_height"], WHITE, FONT_BIG),
+        outlined_text_at(21, 17, "%s'" % one_decimal(state["wave_height"]), WHITE, FONT_BIG),
     ])
 
 def page_two(state):
@@ -427,7 +431,7 @@ def page_two(state):
         text_at(1, 0, state["name"], OFF_WHITE),
         rect(47, 1, 3, 3, rating_color(state["rating"])),
         text_at(52, 0, state["rating"], rating_color(state["rating"])),
-        text_at(1, 7, "WAVE %.1f'" % state["wave_height"], OCEAN_LIGHT),
+        text_at(1, 7, "WAVE %s'" % one_decimal(state["wave_height"]), OCEAN_LIGHT),
         text_at(1, 13, "PER %dS" % rounded_int(state["period"]), FOAM),
         text_at(35, 13, "SW %s" % state["swell_direction"], FOAM),
         text_at(1, 19, "WIND %s %dKT" % (state["wind_direction"], rounded_int(state["wind_speed"])), OFF_WHITE),
@@ -611,7 +615,7 @@ def page_three(state, frame_index):
     return render.Stack(children = [
         rect(0, 0, WIDTH, HEIGHT, BLACK),
         text_at(1, 0, forecast_phrase(state), rating_color(state["rating"])),
-        text_at(1, 7, "%.1f' @ %dS %s" % (state["wave_height"], rounded_int(state["period"]), state["swell_direction"]), FOAM),
+        text_at(1, 7, "%s' @ %dS %s" % (one_decimal(state["wave_height"]), rounded_int(state["period"]), state["swell_direction"]), FOAM),
         text_at(1, 13, "WIND %s %dKT" % (state["wind_direction"], rounded_int(state["wind_speed"])), OFF_WHITE),
         text_at(1, 19, state["trend"], OCEAN_LIGHT if state["trend"] != "HOLDING" else MEH),
         shark_for(state, frame_index),
