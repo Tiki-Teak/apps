@@ -1,0 +1,18 @@
+---
+id: surf-check
+name: Surf Check
+summary: Animated live surf conditions
+desc: Live surf conditions for Blackies with wave-height/period animation, details, and a surfer-speak shark forecast.
+author: Greg Worthing
+fileName: surf_check.star
+packageName: surfcheck
+broken: false
+recommendedInterval: 10
+category: weather
+tags:
+  - sports
+  - nature
+  - weather
+  - local
+published: '2026-09-20T00:00:00Z'
+updated: '2026-09-20T00:00:00Z'
