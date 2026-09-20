@@ -3797,12 +3797,6 @@ def _choose_turn(artwork):
         return ["sleep"]
     elif artwork == "vacant":
         return ["vacant"]
-    elif artwork == "desk":
-        return [["default"], ["side"]][random.number(0, 1)]
-    elif artwork == "mischief":
-        return [["fly"], ["glitch"]][random.number(0, 1)]
-    elif artwork == "after_hours":
-        return [["sleep"], ["vacant"]][random.number(0, 1)]
 
     # 30,000 equally likely slots per render:
     #   Vacant: 9,900 slots = 33%
@@ -3824,9 +3818,6 @@ def _choose_turn(artwork):
 def get_schema():
     artwork_options = [
         schema.Option(display = "All scenes (original rotation)", value = "all"),
-        schema.Option(display = "Desk frog", value = "desk"),
-        schema.Option(display = "Mischief", value = "mischief"),
-        schema.Option(display = "After hours", value = "after_hours"),
         schema.Option(display = "Default", value = "default"),
         schema.Option(display = "Side-eye", value = "side"),
         schema.Option(display = "Fly", value = "fly"),
@@ -3840,7 +3831,7 @@ def get_schema():
             schema.Dropdown(
                 id = "artwork",
                 name = "Artwork display",
-                desc = "Choose the Frog Desk scene or a curated group of its original scenes.",
+                desc = "Choose one Frog Desk scene or the full original rotation.",
                 icon = "image",
                 default = "all",
                 options = artwork_options,
