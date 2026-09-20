@@ -1,0 +1,19 @@
+---
+id: surf-check
+name: Surf Check
+summary: Live Blackies surf conditions
+desc: Animated live surf conditions for Blackies, Newport Beach, with wave height/period visualization, detail page, and surfer-speak forecast.
+author: Greg Worthing
+fileName: surf_check.star
+packageName: surfcheck
+broken: false
+recommendedInterval: 10
+category: weather
+tags:
+  - sports
+  - nature
+  - weather
+  - local
+  - surf
+published: '2026-09-20T00:00:00Z'
+updated: '2026-09-20T00:00:00Z'
