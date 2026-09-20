@@ -1,5 +1,8 @@
 name: SharkByte Surf Live Check
 
+permissions:
+  contents: write
+
 on:
   push:
     paths:
@@ -24,3 +27,22 @@ jobs:
         run: pixlet check 'apps/SharkByte Surf - Live/sharkbyte_surf_live.star'
       - name: Render live preview
         run: pixlet render -z 9 'apps/SharkByte Surf - Live/sharkbyte_surf_live.star'
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharkbyte-surf-live-preview
+          path: "apps/SharkByte Surf - Live/sharkbyte_surf_live.webp"
+
+      - name: Commit refreshed preview
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "apps/SharkByte Surf - Live/sharkbyte_surf_live.webp"
+          if git diff --cached --quiet; then
+            echo "Preview already current."
+            exit 0
+          fi
+          git commit -m "Update SharkByte preview [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
