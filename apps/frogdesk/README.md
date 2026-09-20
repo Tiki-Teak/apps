@@ -4,12 +4,12 @@ Frog Desk is a hand-drawn 64×32 pixel-art desk scene. Every frame is preserved 
 
 ## App settings
 
-- **Artwork display** — choose the original all-scene rotation, a themed set, or one exact scene.
+- **Artwork display** — choose the original all-scene rotation or one exact scene.
 - **Finish each animation** — keep the selected scene playing through its original animation.
 
 ## How often it updates
 
-Frog Desk uses Tronbyt’s built-in **Render interval** setting. The catalog recommends **5 minutes**; set any interval you prefer in the Tronbyt Manager when adding or editing the app. Each refresh makes a new randomized selection when an artwork group is selected.
+Frog Desk uses Tronbyt’s built-in **Render interval** setting. The catalog recommends **5 minutes**; set any interval you prefer in the Tronbyt Manager when adding or editing the app. Each refresh makes a new randomized selection when **All scenes** is selected.
 
 ## Original rotation
 
