@@ -3,7 +3,7 @@ name: SharkByte Surf Live Check
 on:
   push:
     paths:
-      - "apps/sharkbytesurflive/**"
+      - "apps/SharkByte Surf - Live/**"
       - ".github/workflows/sharkbyte-surf-live-check.yml"
   workflow_dispatch:
 
@@ -19,8 +19,8 @@ jobs:
           sudo install /tmp/pixlet /usr/local/bin/pixlet
           pixlet version || true
       - name: Lint
-        run: pixlet lint apps/sharkbytesurflive/sharkbyte_surf_live.star
+        run: pixlet lint 'apps/SharkByte Surf - Live/sharkbyte_surf_live.star'
       - name: Check
-        run: pixlet check apps/sharkbytesurflive/sharkbyte_surf_live.star
+        run: pixlet check 'apps/SharkByte Surf - Live/sharkbyte_surf_live.star'
       - name: Render live preview
-        run: pixlet render -z 9 apps/sharkbytesurflive/sharkbyte_surf_live.star
+        run: pixlet render -z 9 'apps/SharkByte Surf - Live/sharkbyte_surf_live.star'
