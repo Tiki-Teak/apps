@@ -16,7 +16,6 @@ HEIGHT = 32
 FONT = "CG-pixel-3x5-mono"
 FONT_BIG = "tb-8"
 FRAME_MS = 250
-WAVE_PHASES = 12
 CACHE_TTL = 60 * 10
 
 BLACK = "#000000"
@@ -126,6 +125,11 @@ def clamp(value, low, high):
 def rounded_int(value):
     return int(float(value) + 0.5)
 
+def safe_float(value, fallback = 0):
+    if value == None:
+        return float(fallback)
+    return float(value)
+
 def one_decimal(value):
     tenths = int(float(value) * 10.0 + 0.5)
     return "%d.%d" % (tenths // 10, tenths % 10)
@@ -168,6 +172,12 @@ def rect(x, y, width, height, color):
     return render.Padding(
         pad = (x, y, 0, 0),
         child = render.Box(width = width, height = height, color = color),
+    )
+
+def dot(x, y, diameter, color):
+    return render.Padding(
+        pad = (x, y, 0, 0),
+        child = render.Circle(diameter = diameter, color = color),
     )
 
 def text_at(x, y, content, color = WHITE, font = FONT):
@@ -224,7 +234,7 @@ def spot_from_slot(config, slot):
         return None
     return {
         "slot": slot,
-        "name": name,
+        "name": name.upper()[0:13],
         "lat": parts[0],
         "lon": parts[1],
     }
@@ -295,11 +305,26 @@ def rate_conditions(state, preferred_min, preferred_max):
     elif wind >= 18:
         score -= 1
 
+    score += blackies_wind_bonus(state)
+
     if score >= 5:
         return "GO"
     if score >= 2:
         return "MEH"
     return "SHIT"
+
+def blackies_wind_bonus(state):
+    # Small spot-specific nudge for the default Blackies setup: light NE-ish
+    # wind is favorable, while a stronger W/SW flow is usually less clean.
+    if state["name"].find("BLACK") < 0:
+        return 0
+    d = state["wind_degrees"]
+    speed = state["wind_speed"]
+    if speed >= 3 and speed <= 12 and d >= 20 and d <= 110:
+        return 1
+    if speed >= 10 and d >= 190 and d <= 300:
+        return -1
+    return 0
 
 def get_state(spot, preferred_min, preferred_max):
     marine = fetch_json(marine_url(spot))
@@ -311,21 +336,23 @@ def get_state(spot, preferred_min, preferred_max):
     wc = weather.get("current", {})
     if mc.get("wave_height") == None or mc.get("wave_period") == None:
         return None
+    if wc.get("temperature_2m") == None or wc.get("wind_speed_10m") == None:
+        return None
 
     water_c = mc.get("sea_surface_temperature")
-    water_f = float(water_c) * 9.0 / 5.0 + 32.0 if water_c != None else 0
+    water_f = safe_float(water_c, 0) * 9.0 / 5.0 + 32.0 if water_c != None else None
 
     daily = weather.get("daily", {})
     sunsets = daily.get("sunset", [])
     state = {
         "name": spot["name"],
-        "wave_height": float(mc.get("wave_height", 0)),
-        "period": float(mc.get("wave_period", 8)),
-        "swell_degrees": float(mc.get("swell_wave_direction", 0)),
+        "wave_height": safe_float(mc.get("wave_height"), 0),
+        "period": safe_float(mc.get("wave_period"), 8),
+        "swell_degrees": safe_float(mc.get("swell_wave_direction"), 0),
         "water_temp": water_f,
-        "air_temp": float(wc.get("temperature_2m", 0)),
-        "wind_speed": float(wc.get("wind_speed_10m", 0)),
-        "wind_degrees": float(wc.get("wind_direction_10m", 0)),
+        "air_temp": safe_float(wc.get("temperature_2m"), 0),
+        "wind_speed": safe_float(wc.get("wind_speed_10m"), 0),
+        "wind_degrees": safe_float(wc.get("wind_direction_10m"), 0),
         "sunset": format_sunset(sunsets[0]) if sunsets else "--:--",
         "trend": wave_trend(marine.get("hourly", {})),
         "hour": hour_from_iso(wc.get("time", "")),
@@ -355,60 +382,117 @@ def wave_amplitude(height_ft):
         return 16
     return 19
 
-def wave_span(height_ft):
+def wave_span(height_ft, period):
     if height_ft < 2:
-        return 10
-    if height_ft < 4:
-        return 15
-    if height_ft < 7:
-        return 20
-    return 24
+        base = 9
+    elif height_ft < 4:
+        base = 13
+    elif height_ft < 7:
+        base = 17
+    else:
+        base = 21
 
-def wave_frame(state, phase):
+    # Longer-period swell reads as a broader, smoother wall. Short-period surf
+    # stays tighter and gets extra surface chop below.
+    if period >= 14:
+        base += 4
+    elif period >= 11:
+        base += 2
+    elif period < 8:
+        base -= 2
+    return clamp(base, 7, 26)
+
+def wave_frame(state, frame_index, frame_count):
     amp = wave_amplitude(state["wave_height"])
-    span = wave_span(state["wave_height"])
-    progress = float(phase) / float(WAVE_PHASES - 1)
-    center = -span + int((WIDTH + span * 2) * progress)
-    base = 27
+    period = clamp(state["period"], 5.0, 20.0)
+    span = wave_span(state["wave_height"], period)
+    progress = float(frame_index) / float(max(1, frame_count - 1))
+    center = -span - 3 + (WIDTH + span * 2 + 6) * progress
+    base = 28
+    choppy = period < 8.5
+
+    points = []
+    for x in range(0, WIDTH, 2):
+        dx = (float(x) - center) / float(span)
+        lift = 0.0
+        if abs(dx) <= 1.0:
+            curve = 1.0 - dx * dx
+            face = 1.10 if dx >= 0 else 0.88
+            lift = float(amp) * curve * face
+
+        ripple = 0.0
+        if choppy:
+            ripple = 1.0 * math.sin((float(x) + float(frame_index) * 1.8) * 0.58)
+        elif amp <= 6:
+            ripple = 0.55 * math.sin((float(x) + float(frame_index)) * 0.30)
+
+        y = clamp(int(float(base) - lift + ripple), 6, base)
+        points.append((x, y))
+
+    # Ensure the filled polygon reaches the final physical pixel column.
+    if points[-1][0] != WIDTH - 1:
+        last = points[-1]
+        points.append((WIDTH - 1, last[1]))
+
+    vertices = [(0, HEIGHT - 1), (0, points[0][1])] + points + [(WIDTH - 1, HEIGHT - 1)]
     parts = [
         rect(0, 27, WIDTH, 5, OCEAN_DEEP),
-        rect(0, 29, WIDTH, 3, OCEAN_MID),
+        render.Polygon(vertices = vertices, fill_color = OCEAN_MID),
     ]
 
-    for x in range(WIDTH):
-        d = x - center
-        ad = abs(d)
-        lift = 0
-        if ad < span:
-            ratio = 1.0 - float(ad) / float(span)
-            lift = int(float(amp) * ratio * ratio)
+    min_y = HEIGHT
+    min_x = 0
+    for point in points:
+        if point[1] < min_y:
+            min_y = point[1]
+            min_x = point[0]
 
-            # Give the front face a little extra pitch so it reads as a breaker.
-            if d > 0 and d < max(2, span // 3):
-                lift += int(float(amp) * 0.12 * (1.0 - float(d) / float(max(2, span // 3))))
+    # A clean bright upper face keeps the wave readable through smoked acrylic.
+    for i in range(len(points) - 1):
+        a = points[i]
+        b = points[i + 1]
+        if min(a[1], b[1]) <= 26:
+            parts.append(render.Line(
+                x1 = a[0],
+                y1 = a[1],
+                x2 = b[0],
+                y2 = b[1],
+                width = 1,
+                color = OCEAN_LIGHT,
+            ))
 
-        ripple = int((math.sin(float(x + phase * 4) * 0.42) + 1.0) * 0.5)
-        top = clamp(base - lift - ripple, 6, 29)
+    if min_y < 27:
+        foam_width = clamp(3 + amp // 3, 3, 9)
+        for i in range(foam_width):
+            px = min_x + i
+            py = min_y - (1 if i < foam_width // 2 else 0) + i // 4
+            if px >= 0 and px < WIDTH and py >= 4 and py < HEIGHT:
+                parts.append(rect(px, py, 1, 1, FOAM if i % 2 == 0 else OCEAN_GLOW))
 
-        if top < 29:
-            color = OCEAN_LIGHT if lift > amp // 2 else OCEAN_MID
-            parts.append(rect(x, top, 1, HEIGHT - top, color))
-
-        if lift >= max(2, int(float(amp) * 0.55)):
-            parts.append(rect(x, max(5, top - 1), 1, 1, FOAM))
-
-    # Curl / lip near the crest. Larger surf gets a more obvious overhang.
-    lip = max(1, amp // 4)
-    crest_y = clamp(base - amp, 5, 26)
-    for i in range(lip):
-        px = center + 1 + i
-        py = crest_y + (i // 2)
-        if px >= 0 and px < WIDTH:
-            parts.append(rect(px, py, 1, 1, FOAM))
-            if amp >= 10 and i < lip - 1 and py + 1 < HEIGHT:
-                parts.append(rect(px, py + 1, 1, 1, OCEAN_GLOW))
+        if amp >= 10:
+            for offset in [(-2, -2), (1, -3), (4, -1)]:
+                sx = min_x + offset[0]
+                sy = min_y + offset[1]
+                if sx >= 0 and sx < WIDTH and sy >= 3:
+                    parts.append(rect(sx, sy, 1, 1, FOAM))
 
     return render.Stack(children = parts)
+
+def page_one(state, frame_index, frame_count):
+    air_color = air_temperature_color(state["air_temp"])
+    water_color = water_temperature_color(state["water_temp"]) if state["water_temp"] != None else OCEAN_LIGHT
+    water_text = "%d°" % rounded_int(state["water_temp"]) if state["water_temp"] != None else "--"
+    return render.Stack(children = [
+        rect(0, 0, WIDTH, HEIGHT, BLACK),
+        wave_frame(state, frame_index, frame_count),
+        outlined_text_at(1, 0, state["name"], OFF_WHITE),
+        dot(59, 1, 4, rating_color(state["rating"])),
+        sun_icon(1, 8, air_color),
+        outlined_text_at(10, 7, "%d°" % rounded_int(state["air_temp"]), air_color),
+        drop_icon(38, 9, water_color),
+        outlined_text_at(47, 7, water_text, water_color),
+        outlined_text_at(22, 17, "%s'" % one_decimal(state["wave_height"]), WHITE, FONT_BIG),
+    ])
 
 def page_one(state, phase):
     air_color = air_temperature_color(state["air_temp"])
@@ -428,9 +512,9 @@ def page_one(state, phase):
 def page_two(state):
     return render.Stack(children = [
         rect(0, 0, WIDTH, HEIGHT, BLACK),
-        text_at(1, 0, state["name"], OFF_WHITE),
-        rect(47, 1, 3, 3, rating_color(state["rating"])),
-        text_at(52, 0, state["rating"], rating_color(state["rating"])),
+        text_at(1, 0, state["name"][0:10], OFF_WHITE),
+        dot(42, 1, 4, rating_color(state["rating"])),
+        text_at(48, 0, state["rating"], rating_color(state["rating"])),
         text_at(1, 7, "WAVE %s'" % one_decimal(state["wave_height"]), OCEAN_LIGHT),
         text_at(1, 13, "PER %dS" % rounded_int(state["period"]), FOAM),
         text_at(35, 13, "SW %s" % state["swell_direction"], FOAM),
@@ -601,23 +685,58 @@ def sprite(pattern, x, y):
 
 def shark_for(state, frame_index):
     seed = state["hour"] + int(state["wave_height"] * 10)
-    variant = seed % 3
-    bob = 1 if frame_index % 4 >= 2 else 0
+    variant = (seed + frame_index // 3) % 3
+    bob_step = [0, -1, 0, 1][frame_index % 4]
+    bob = bob_step * (2 if state["wave_height"] >= 6 else 1)
+
     if state["rating"] == "GO":
         pattern = SHARK_GO[variant]
     elif state["rating"] == "MEH":
         pattern = SHARK_MEH[variant]
     else:
         pattern = SHARK_SHIT[variant]
-    return sprite(pattern, 48, 22 + bob)
+
+    y = 22 + bob
+    parts = [sprite(pattern, 48, y)]
+
+    # Tiny days look sleepy; larger surf throws a little spray around the shark.
+    if state["wave_height"] < 1.5:
+        parts += [
+            text_at(47, 18, "z", OCEAN_LIGHT),
+            text_at(52, 16, "z", OCEAN_GLOW),
+        ]
+    elif state["wave_height"] >= 6:
+        parts += [
+            rect(46, 28, 1, 1, FOAM),
+            rect(47, 27, 1, 1, OCEAN_GLOW),
+            rect(62, 29, 1, 1, FOAM),
+        ]
+
+    return render.Stack(children = parts)
+
+def summary_note(state):
+    if state["wind_speed"] >= 15:
+        return "BLOWN OUT"
+    if state["trend"] == "BUILDING" and state["period"] >= 10:
+        return "MORE ON THE WAY"
+    if state["wind_speed"] <= 5 and state["period"] >= 12:
+        return "CLEAN + JUICY"
+    if state["wave_height"] < 1.5:
+        return "LONGBOARD DAY"
+    if state["trend"] == "FADING":
+        return "USE IT OR LOSE IT"
+    if state["period"] < 8:
+        return "SHORT-PERIOD"
+    return state["trend"]
 
 def page_three(state, frame_index):
     return render.Stack(children = [
         rect(0, 0, WIDTH, HEIGHT, BLACK),
+        rect(0, 29, WIDTH, 3, OCEAN_DEEP),
         text_at(1, 0, forecast_phrase(state), rating_color(state["rating"])),
         text_at(1, 7, "%s' @ %dS %s" % (one_decimal(state["wave_height"]), rounded_int(state["period"]), state["swell_direction"]), FOAM),
         text_at(1, 13, "WIND %s %dKT" % (state["wind_direction"], rounded_int(state["wind_speed"])), OFF_WHITE),
-        text_at(1, 19, state["trend"], OCEAN_LIGHT if state["trend"] != "HOLDING" else MEH),
+        text_at(1, 19, summary_note(state), OCEAN_LIGHT),
         shark_for(state, frame_index),
     ])
 
@@ -630,13 +749,9 @@ def error_page():
     ])
 
 def repeated_wave_frames(state):
-    period_seconds = clamp(rounded_int(state["period"]), 6, 18)
-    total_frames = period_seconds * int(1000 / FRAME_MS)
-    result = []
-    for i in range(total_frames):
-        phase = int(float(i) / float(max(1, total_frames - 1)) * float(WAVE_PHASES - 1))
-        result.append(page_one(state, phase))
-    return result
+    period_seconds = clamp(state["period"], 6.0, 18.0)
+    total_frames = max(24, int(period_seconds * 1000.0 / FRAME_MS))
+    return [page_one(state, i, total_frames) for i in range(total_frames)]
 
 def main(config):
     preferred_min = float(config.str("preferred_min", "1.5"))
