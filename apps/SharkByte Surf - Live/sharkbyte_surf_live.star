@@ -494,21 +494,6 @@ def page_one(state, frame_index, frame_count):
         outlined_text_at(22, 17, "%s'" % one_decimal(state["wave_height"]), WHITE, FONT_BIG),
     ])
 
-def page_one(state, phase):
-    air_color = air_temperature_color(state["air_temp"])
-    water_color = water_temperature_color(state["water_temp"])
-    return render.Stack(children = [
-        rect(0, 0, WIDTH, HEIGHT, BLACK),
-        wave_frame(state, phase),
-        outlined_text_at(1, 0, state["name"], OFF_WHITE),
-        rect(58, 1, 4, 4, rating_color(state["rating"])),
-        sun_icon(1, 8, air_color),
-        outlined_text_at(10, 7, "%d°" % rounded_int(state["air_temp"]), air_color),
-        drop_icon(37, 9, water_color),
-        outlined_text_at(46, 7, "%d°" % rounded_int(state["water_temp"]), water_color),
-        outlined_text_at(21, 17, "%s'" % one_decimal(state["wave_height"]), WHITE, FONT_BIG),
-    ])
-
 def page_two(state):
     return render.Stack(children = [
         rect(0, 0, WIDTH, HEIGHT, BLACK),
