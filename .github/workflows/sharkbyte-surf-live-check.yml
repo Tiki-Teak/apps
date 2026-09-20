@@ -1,0 +1,26 @@
+name: SharkByte Surf Live Check
+
+on:
+  push:
+    paths:
+      - "apps/sharkbytesurflive/**"
+      - ".github/workflows/sharkbyte-surf-live-check.yml"
+  workflow_dispatch:
+
+jobs:
+  pixlet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pixlet
+        run: |
+          curl -L -o /tmp/pixlet.tar.gz https://github.com/tronbyt/pixlet/releases/download/v0.54.0/pixlet_v0.54.0_linux-amd64.tar.gz
+          tar -xzf /tmp/pixlet.tar.gz -C /tmp
+          sudo install /tmp/pixlet /usr/local/bin/pixlet
+          pixlet version || true
+      - name: Lint
+        run: pixlet lint apps/sharkbytesurflive/sharkbyte_surf_live.star
+      - name: Check
+        run: pixlet check apps/sharkbytesurflive/sharkbyte_surf_live.star
+      - name: Render live preview
+        run: pixlet render -z 9 apps/sharkbytesurflive/sharkbyte_surf_live.star
