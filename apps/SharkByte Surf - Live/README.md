@@ -61,16 +61,20 @@ No API key is required for normal prototype/personal use. Open-Meteo marine wave
 
 ## Install on TronByt Server
 
-This app lives inside Greg's custom apps fork:
+This build is inside Greg's `Tiki-Teak/apps` fork of the TronByt system-app catalog.
 
-`https://github.com/Tiki-Teak/apps.git`
+**Use it as the System Apps Repository, not the Custom Apps Repository.** TronByt treats every folder in a custom-app repo as a personal app, so pointing the full catalog fork at Custom Apps would duplicate the entire catalog.
 
-In TronByt Server:
+For Greg's server:
+
 1. Open **Settings → Content and Firmware**.
-2. Under **Custom Apps Repository**, paste the repository URL above and save it.
-3. If the custom repository is already configured, press **Refresh**.
-4. Open the device and choose **Add App**.
-5. Find **SharkByte Surf - Live** under Custom Apps.
-6. Add it, keep Blackies as the only active spot for the first display test, and save.
+2. Under **System Apps Repository**, confirm the repository is `https://github.com/Tiki-Teak/apps.git`.
+   - If it already is, just press **Refresh**.
+   - If it still points to the official TronByt apps repo, replace it with the Tiki-Teak fork and save. The fork contains the normal TronByt catalog plus SharkByte.
+3. Open the display/device and choose **Add App**.
+4. Search System Apps for **SharkByte Surf - Live**.
+5. Add it. For the first hardware test, leave the default Blackies spot active by itself.
+6. Save the app and let the complete animation run. SharkByte requests `show_full_animation = True`, so its period-driven wave cycle should finish even when the normal device app-cycle time is shorter.
 
-After code updates, use **Settings → Content and Firmware → Custom Apps Repository → Refresh** before testing the new build.
+After future SharkByte updates, use **Settings → Content and Firmware → System Apps Repository → Refresh** before checking the new build.
+
