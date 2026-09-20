@@ -1,5 +1,5 @@
 """ 
-Applet: Surf Check
+Applet: SharkByte Surf - Live
 Summary: Live surf conditions with condition-driven wave animation
 Description: A 64x32 surf dashboard for Blackies in Newport Beach. Open-Meteo
   provides live marine/weather data. The main scene visualizes both wave height
@@ -95,7 +95,7 @@ def water_temperature_color(value):
 def get_json(url):
     response = http.get(url, ttl_seconds = CACHE_TTL)
     if response.status_code != 200:
-        fail("Surf Check data request failed with status %d" % response.status_code)
+        fail("SharkByte Surf - Live data request failed with status %d" % response.status_code)
     return response.json()
 
 def safe_number(value, fallback):
